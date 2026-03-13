@@ -4,6 +4,7 @@ import type { Selection, BaseType } from 'd3-selection';
 import type {
   GraphNode,
   ResolvedOptions,
+  ScaleFn,
   TimelineNode,
   TimelineScale,
   TimeScaleConfig,
@@ -137,7 +138,7 @@ export function computeRowCounts(
   return { rowsAbove: Math.max(1, maxAbove), rowsBelow: maxBelow };
 }
 
-const identityScale = ((v: any) => toNumeric(v)) as unknown as TimelineScale;
+const identityScale = ((v: Date | number) => toNumeric(v)) as unknown as TimelineScale;
 
 // ---------------------------------------------------------------------------
 // BandRenderer
@@ -166,11 +167,12 @@ export class BandRenderer {
     const innerWidth = Math.max(1, width - padLeft - padRight);
 
     // --- Scale ---------------------------------------------------------------
+    const parentDomain = band.parentNode
+      ? [band.parentNode.start, nodeEnd(band.parentNode)] as [Date, Date] | [number, number]
+      : undefined;
     const scaleConfig: TimeScaleConfig = {
       ...opts.scale,
-      domain: band.parentNode
-        ? [band.parentNode.start as Date & number, nodeEnd(band.parentNode) as Date & number]
-        : opts.scale.domain,
+      domain: parentDomain ?? opts.scale.domain,
     };
 
     const { scale, axis } = createScale(scaleConfig, band.nodes, [0, innerWidth]);
@@ -329,7 +331,7 @@ export class BandRenderer {
             textEl.text('');
           } else {
             const maxWidth = spanWidth - 2 * LABEL_GAP_PAD;
-            clipText(textEl as any, maxWidth);
+            clipText(textEl, maxWidth);
             labelWidth = textNode.getComputedTextLength();
           }
         }
@@ -476,7 +478,7 @@ function buildSpanDatums(
 ): SpanDatum[] {
   if (nodes.length === 0) return [];
 
-  const s = scale as (v: Date | number) => number;
+  const s = scale as ScaleFn;
 
   const sorted = [...nodes].sort((a, b) => {
     const diff = toNumeric(a.start) - toNumeric(b.start);
@@ -485,8 +487,8 @@ function buildSpanDatums(
 
   const datums: SpanDatum[] = sorted.map((node) => {
     const ev = isEventNode(node);
-    const x0 = s(node.start as any);
-    const x1 = ev ? x0 : s(nodeEnd(node) as any);
+    const x0 = s(node.start);
+    const x1 = ev ? x0 : s(nodeEnd(node));
     return {
       node,
       x0,
@@ -543,7 +545,9 @@ function buildSpanDatums(
 // ---------------------------------------------------------------------------
 
 function clipText(
-  textSel: Selection<SVGTextElement, unknown, BaseType, unknown>,
+  // Datum and parent types vary by call-site context; only the element matters.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  textSel: Selection<SVGTextElement, any, any, any>,
   maxWidth: number,
 ): void {
   const textNode = textSel.node();

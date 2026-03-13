@@ -1,6 +1,5 @@
 import { zoom, zoomIdentity } from 'd3-zoom';
 import type { ZoomBehavior, ZoomTransform } from 'd3-zoom';
-import { select } from 'd3-selection';
 import 'd3-transition';
 import type { Selection, BaseType } from 'd3-selection';
 import type { Bounds, ViewportOptions } from './types';

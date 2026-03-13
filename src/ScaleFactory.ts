@@ -2,7 +2,7 @@ import { scaleTime, scaleLinear } from 'd3-scale';
 import type { ScaleTime, ScaleLinear } from 'd3-scale';
 import { axisBottom } from 'd3-axis';
 import type { Axis } from 'd3-axis';
-import type { TimeScaleConfig, TimelineNode, TimelineScale } from './types';
+import type { ScaleFn, TimeScaleConfig, TimelineNode, TimelineScale } from './types';
 import { computeDomain, nodeEnd, toNumeric } from './utils';
 
 // ---------------------------------------------------------------------------
@@ -82,6 +82,6 @@ export function nodeToPixelRange(
   node: TimelineNode,
   scale: TimelineScale,
 ): [number, number] {
-  const s = scale as (v: Date | number) => number;
-  return [s(node.start as Date & number), s(nodeEnd(node) as Date & number)];
+  const s = scale as ScaleFn;
+  return [s(node.start), s(nodeEnd(node))];
 }

@@ -68,6 +68,9 @@ export type TimelineScale =
   | ScaleTime<number, number>
   | ScaleLinear<number, number>;
 
+/** Callable signature for mapping data values to pixel positions. */
+export type ScaleFn = (value: Date | number) => number;
+
 // ---------------------------------------------------------------------------
 // Theme
 // ---------------------------------------------------------------------------

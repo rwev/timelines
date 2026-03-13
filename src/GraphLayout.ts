@@ -4,6 +4,7 @@ import type {
   EdgeDatum,
   GraphNode,
   ResolvedOptions,
+  ScaleFn,
   TimelineNode,
   TimeScaleConfig,
 } from './types';
@@ -241,16 +242,15 @@ export class GraphLayout {
   private positionChildrenRecursive(parent: GraphNode): void {
     if (parent.children.length === 0) return;
 
-    const parentScale = this.createBandScale(parent);
-    const s = parentScale as (v: Date | number) => number;
+    const s = this.createBandScale(parent);
     const padLeft = this.opts.padding.left;
 
     for (const child of parent.children) {
       if (!child.parentSpan) continue;
 
       // Compute the parent span's center-x in global coordinates.
-      const spanX0 = s(child.parentSpan.start as Date & number);
-      const spanX1 = s(nodeEnd(child.parentSpan) as Date & number);
+      const spanX0 = s(child.parentSpan.start);
+      const spanX1 = s(nodeEnd(child.parentSpan));
       const spanCenterLocal = (spanX0 + spanX1) / 2;
       const spanCenterGlobal = parent.x + padLeft + spanCenterLocal;
 
@@ -353,17 +353,18 @@ export class GraphLayout {
   // -----------------------------------------------------------------------
 
   private collectEdges(node: GraphNode, edges: EdgeDatum[]): void {
+    if (node.children.length === 0) return;
+
+    const s = this.createBandScale(node);
+    const padLeft = this.opts.padding.left;
+    const padRight = this.opts.padding.right;
+
     for (const child of node.children) {
       if (!child.parentSpan) continue;
 
-      const parentScale = this.createBandScale(node);
-      const s = parentScale as (v: Date | number) => number;
-      const padLeft = this.opts.padding.left;
-      const padRight = this.opts.padding.right;
-
       // Source: left and right endpoints of the parent span (bottom of parent band).
-      const spanX0 = s(child.parentSpan.start as Date & number);
-      const spanX1 = s(nodeEnd(child.parentSpan) as Date & number);
+      const spanX0 = s(child.parentSpan.start);
+      const spanX1 = s(nodeEnd(child.parentSpan));
       const sourceLeftX = node.x + padLeft + spanX0;
       const sourceRightX = node.x + padLeft + spanX1;
       const sourceY = node.y + node.height;
@@ -418,21 +419,22 @@ export class GraphLayout {
    * The domain is scoped to the parent span's range (for child bands)
    * or the full data range (for root).
    */
-  private createBandScale(graphNode: GraphNode) {
+  private createBandScale(graphNode: GraphNode): ScaleFn {
     const band = graphNode.band;
     const padLeft = this.opts.padding.left;
     const padRight = this.opts.padding.right;
     const innerWidth = graphNode.width - padLeft - padRight;
 
+    const parentDomain = band.parentNode
+      ? [band.parentNode.start, nodeEnd(band.parentNode)] as [Date, Date] | [number, number]
+      : undefined;
     const scaleConfig: TimeScaleConfig = {
       ...this.opts.scale,
-      domain: band.parentNode
-        ? [band.parentNode.start as Date & number, nodeEnd(band.parentNode) as Date & number]
-        : this.opts.scale.domain,
+      domain: parentDomain ?? this.opts.scale.domain,
     };
 
     const { scale } = createScale(scaleConfig, band.nodes, [0, innerWidth]);
-    return scale;
+    return scale as ScaleFn;
   }
 
   private collapseDescendants(nodes: TimelineNode[], visited = new Set<string>()): void {
