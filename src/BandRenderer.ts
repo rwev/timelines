@@ -223,7 +223,7 @@ export class BandRenderer {
     // Exit
     spanSel
       .exit()
-      .transition()
+      .transition('span-exit')
       .duration(opts.animationDuration)
       .style('opacity', 0)
       .remove();
@@ -245,7 +245,7 @@ export class BandRenderer {
     const spanMerge = spanEnter.merge(spanSel);
 
     spanMerge
-      .transition()
+      .transition('span-enter')
       .duration(opts.animationDuration)
       .style('opacity', 1);
 

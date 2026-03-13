@@ -83,7 +83,7 @@ export class Viewport {
 
     if (animate) {
       this.svg
-        .transition()
+        .transition('viewport')
         .duration(500)
         .call(this.zoomBehavior.transform as any, transform);
     } else {
@@ -108,7 +108,7 @@ export class Viewport {
 
     if (animate) {
       this.svg
-        .transition()
+        .transition('viewport')
         .duration(400)
         .call(this.zoomBehavior.transform as any, transform);
     } else {
@@ -123,7 +123,7 @@ export class Viewport {
     if (!this.svg) return;
     if (animate) {
       this.svg
-        .transition()
+        .transition('viewport')
         .duration(400)
         .call(this.zoomBehavior.transform as any, zoomIdentity);
     } else {

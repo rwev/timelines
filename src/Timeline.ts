@@ -225,7 +225,7 @@ export class Timeline {
     // --- Exit ---------------------------------------------------------------
     bandSel
       .exit<GraphNode>()
-      .transition()
+      .transition('band-exit')
       .duration(opts.animationDuration)
       .style('opacity', 0)
       .attr('transform', function (d) {
@@ -257,7 +257,7 @@ export class Timeline {
     const bandMerge = bandEnter.merge(bandSel);
 
     bandMerge
-      .transition()
+      .transition('band-layout')
       .duration(opts.animationDuration)
       .style('opacity', (d) => Math.max(0.65, 1 - d.band.depth * opts.depthFade))
       .attr('transform', (d) => `translate(${d.x}, ${d.y})`);

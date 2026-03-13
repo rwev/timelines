@@ -48,7 +48,7 @@ export class EdgeRenderer {
     // Collapse the curve back toward the source point, then remove.
     sel
       .exit<EdgeDatum>()
-      .transition()
+      .transition('edge-exit')
       .duration(opts.animationDuration)
       .style('opacity', 0)
       .attr('d', (d) => collapsedPath(d))
@@ -76,7 +76,7 @@ export class EdgeRenderer {
       .on('mouseleave', function () {
         select(this).style('stroke', cssVar('edgeColor')).attr('stroke-width', 3);
       })
-      .transition()
+      .transition('edge-enter')
       .duration(opts.animationDuration)
       .style('opacity', 1)
       .attr('d', (d) => linkGen(d));
