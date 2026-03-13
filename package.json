@@ -1,0 +1,56 @@
+{
+  "name": "timelines",
+  "version": "0.1.0",
+  "description": "Hierarchical timeline visualization library built on D3.js",
+  "type": "module",
+  "main": "./dist/timelines.cjs",
+  "module": "./dist/timelines.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/timelines.js",
+      "require": "./dist/timelines.cjs",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "dev": "vite serve demo",
+    "build": "tsc && vite build",
+    "build:demo": "vite build --config vite.demo.config.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "preview": "vite preview"
+  },
+  "keywords": [
+    "timeline",
+    "visualization",
+    "d3",
+    "hierarchical",
+    "drill-down",
+    "svg"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "d3-axis": "^3.0.0",
+    "d3-scale": "^4.0.2",
+    "d3-selection": "^3.0.0",
+    "d3-shape": "^3.2.0",
+    "d3-transition": "^3.0.1",
+    "d3-zoom": "^3.0.0"
+  },
+  "devDependencies": {
+    "@types/d3-axis": "^3.0.6",
+    "@types/d3-scale": "^4.0.8",
+    "@types/d3-selection": "^3.0.10",
+    "@types/d3-shape": "^3.1.8",
+    "@types/d3-transition": "^3.0.8",
+    "@types/d3-zoom": "^3.0.8",
+    "typescript": "^5.4.0",
+    "vite": "^5.4.0",
+    "vite-plugin-dts": "^3.9.0",
+    "vitest": "^2.1.9"
+  }
+}
