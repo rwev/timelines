@@ -30,6 +30,7 @@ import { nodeEnd } from './utils';
 export class GraphLayout {
   private expanded = new Set<string>();
   private opts: ResolvedOptions;
+  private scaleCache = new Map<string, ScaleFn>();
 
   constructor(opts: ResolvedOptions) {
     this.opts = opts;
@@ -119,6 +120,7 @@ export class GraphLayout {
    * Compute the full graph layout and return the root GraphNode.
    */
   computeLayout(): GraphNode {
+    this.scaleCache.clear();
     const root = this.buildGraphTree();
     this.assignDimensions(root);
     this.positionRoot(root);
@@ -415,11 +417,14 @@ export class GraphLayout {
   }
 
   /**
-   * Create a D3 scale for a graph node's band.
+   * Create (or retrieve cached) D3 scale for a graph node's band.
    * The domain is scoped to the parent span's range (for child bands)
    * or the full data range (for root).
    */
   private createBandScale(graphNode: GraphNode): ScaleFn {
+    const cached = this.scaleCache.get(graphNode.id);
+    if (cached) return cached;
+
     const band = graphNode.band;
     const padLeft = this.opts.padding.left;
     const padRight = this.opts.padding.right;
@@ -434,7 +439,9 @@ export class GraphLayout {
     };
 
     const { scale } = createScale(scaleConfig, band.nodes, [0, innerWidth]);
-    return scale as ScaleFn;
+    const fn = scale as ScaleFn;
+    this.scaleCache.set(graphNode.id, fn);
+    return fn;
   }
 
   private collapseDescendants(nodes: TimelineNode[], visited = new Set<string>()): void {

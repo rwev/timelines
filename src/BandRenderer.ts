@@ -550,13 +550,24 @@ function clipText(
   const textNode = textSel.node();
   if (!textNode) return;
 
-  let text = textSel.text();
+  const text = textSel.text();
   if (!text) return;
   if (maxWidth <= 0) { textSel.text(''); return; }
   if (textNode.getComputedTextLength() <= maxWidth) return;
 
-  while (text.length > 0 && textNode.getComputedTextLength() > maxWidth) {
-    text = text.slice(0, -1);
-    textSel.text(text + '\u2026');
+  // Binary search for the longest substring that fits within maxWidth.
+  // Each iteration triggers a layout reflow via getComputedTextLength,
+  // so O(log n) is a significant improvement over the O(n) linear scan.
+  let lo = 0;
+  let hi = text.length;
+  while (lo < hi) {
+    const mid = (lo + hi + 1) >> 1;
+    textSel.text(text.slice(0, mid) + '\u2026');
+    if (textNode.getComputedTextLength() <= maxWidth) {
+      lo = mid;
+    } else {
+      hi = mid - 1;
+    }
   }
+  textSel.text(lo > 0 ? text.slice(0, lo) + '\u2026' : '');
 }
