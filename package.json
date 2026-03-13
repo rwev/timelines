@@ -6,11 +6,12 @@
   "main": "./dist/timelines.cjs",
   "module": "./dist/timelines.js",
   "types": "./dist/index.d.ts",
+  "sideEffects": false,
   "exports": {
     ".": {
+      "types": "./dist/index.d.ts",
       "import": "./dist/timelines.js",
-      "require": "./dist/timelines.cjs",
-      "types": "./dist/index.d.ts"
+      "require": "./dist/timelines.cjs"
     }
   },
   "files": [
