@@ -189,9 +189,6 @@ export class BandRenderer {
     const aboveSpace = rowsAbove > 0 ? rowsAbove * BRACKET_HEIGHT + LABEL_OVERFLOW : 0;
     const axisLineY = aboveSpace;
 
-    // --- Remove legacy elements if present -----------------------------------
-    parentG.selectAll('rect.tl-band-bg').remove();
-
     // --- Axis ----------------------------------------------------------------
     let axisG = parentG.select<SVGGElement>('g.tl-axis');
     if (axisG.empty()) {

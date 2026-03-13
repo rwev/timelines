@@ -7,12 +7,10 @@ export type {
   NodeStyle,
   TimeScaleConfig,
   TimelineScale,
+  ScaleFn,
   ThemeTokens,
   TimelineOptions,
-  BandDescriptor,
   LaneAssignment,
-  GraphNode,
-  EdgeDatum,
   ViewportOptions,
   Bounds,
   TimelineEventMap,
@@ -20,4 +18,4 @@ export type {
 
 // Utilities that consumers may find useful
 export { assignLanes, assignSingleLane } from './LaneAssigner';
-export { computeDomain, findNode, toNumeric, flattenGraphTree, isEvent, nodeEnd } from './utils';
+export { computeDomain, findNode, toNumeric, isEvent, nodeEnd } from './utils';
