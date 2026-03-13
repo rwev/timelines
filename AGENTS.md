@@ -135,12 +135,16 @@ Short local abbreviations are acceptable: `opts`, `d` (datum), `g` (group),
 ### Error Handling
 
 - **No try/catch** — prevent invalid states structurally via types and early returns.
-- **Throw** only for programmer errors (e.g., empty input to `computeDomain`).
+- **Throw** only for programmer errors (e.g., null container in `Timeline` constructor).
 - **Return `null`** from search functions when no match is found.
+- **Return fallback values** for empty inputs (e.g., `computeDomain([])` returns `[0, 1]`).
 - **Early return** for edge cases (empty input, missing DOM elements, zero dimensions).
+- **Guard async callbacks** with `isDestroyed` flag after `destroy()`.
 - Use optional chaining for cleanup: `this.resizeObserver?.disconnect()`.
 - Non-null assertion (`!`) only when context guarantees non-null (e.g., after
   a while-loop guard).
+- **Visited-set protection** on all recursive tree walks to prevent infinite
+  loops on circular user data.
 
 ### Comments
 
@@ -156,12 +160,16 @@ Short local abbreviations are acceptable: `opts`, `d` (datum), `g` (group),
 - Always include `import 'd3-transition'` as a side-effect import in files using `.transition()`.
 - Fully parameterize Selection types: `Selection<SVGGElement, GraphNode, BaseType, unknown>`.
 - Use the enter-update-exit pattern for data joins consistently.
-- Cast scales to `(v: Date | number) => number` when used outside D3 APIs.
+- Cast scales to `ScaleFn` (or `(v: Date | number) => number`) when used
+  outside D3 APIs.
 - Use `as any` at D3 API boundaries where TS type definitions are overly strict
   (e.g., `axisG.call(axis as any)`).
+- **Name all transitions** to prevent cross-cancellation on rapid re-renders
+  (e.g., `.transition('band-layout')`, `.transition('edge-enter')`).
 - Theme values via CSS custom properties: use `cssVar('tokenName')` helper,
   applied with `.style()` not `.attr()`.
 - All transitions use `opts.animationDuration` for consistent animation timing.
+- Band scales are cached per GraphNode per layout pass to avoid redundant creation.
 
 ### Testing
 
