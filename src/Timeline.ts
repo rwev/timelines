@@ -53,6 +53,9 @@ export class Timeline {
   private resizeObserver: ResizeObserver | null = null;
 
   private isFirstRender = true;
+  private isDestroyed = false;
+  private pendingRaf: number | null = null;
+  private pendingTimeout: ReturnType<typeof setTimeout> | null = null;
 
   constructor(container: HTMLElement, options: TimelineOptions) {
     if (!container) {
@@ -140,10 +143,20 @@ export class Timeline {
 
   /** Clean up all DOM elements, observers, and event listeners. */
   destroy(): void {
+    this.isDestroyed = true;
+
+    // Cancel pending async callbacks.
+    if (this.pendingRaf != null) cancelAnimationFrame(this.pendingRaf);
+    if (this.pendingTimeout != null) clearTimeout(this.pendingTimeout);
+    this.pendingRaf = null;
+    this.pendingTimeout = null;
+
     this.resizeObserver?.disconnect();
+    this.resizeObserver = null;
+
     this.viewport.destroy();
     this.themeManager.destroy();
-    this.svg.remove();
+    this.svg?.remove();
     this.container.classList.remove('timelines-root');
   }
 
@@ -152,6 +165,8 @@ export class Timeline {
   // -----------------------------------------------------------------------
 
   private render(focusNodeId?: string): void {
+    if (this.isDestroyed) return;
+
     // 1. Compute graph layout.
     const root = this.graphLayout.computeLayout();
     const edges = this.graphLayout.computeEdges(root);
@@ -170,7 +185,9 @@ export class Timeline {
     const fullBounds = this.graphLayout.computeBounds(root);
     if (this.isFirstRender) {
       this.isFirstRender = false;
-      requestAnimationFrame(() => {
+      this.pendingRaf = requestAnimationFrame(() => {
+        if (this.isDestroyed) return;
+        this.pendingRaf = null;
         this.viewport.fitToContent(fullBounds, false);
       });
     } else {
@@ -190,7 +207,9 @@ export class Timeline {
 
       // Delay the fit until the band/edge transitions have largely completed,
       // so the viewport smoothly follows the content.
-      setTimeout(() => {
+      this.pendingTimeout = setTimeout(() => {
+        if (this.isDestroyed) return;
+        this.pendingTimeout = null;
         this.viewport.fitToContent(targetBounds, true);
       }, this.opts.animationDuration * 0.6);
     }
