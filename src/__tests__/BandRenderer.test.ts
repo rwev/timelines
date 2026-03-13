@@ -44,9 +44,9 @@ describe('computeRowCounts', () => {
   it('handles three overlapping nodes (above + below + above row 1)', () => {
     const nodes = [node('a', 0, 10), node('b', 1, 11), node('c', 2, 12)];
     const result = computeRowCounts(nodes);
-    expect(result.rowsAbove).toBeGreaterThanOrEqual(1);
-    // With 3 overlapping: above-0, below-0, above-1
-    expect(result.rowsAbove + result.rowsBelow).toBe(3);
+    // With 3 overlapping: row 0 above, row 0 below, row 1 above.
+    expect(result.rowsAbove).toBe(2);
+    expect(result.rowsBelow).toBe(1);
   });
 });
 
@@ -106,6 +106,7 @@ describe('computeRowCounts with events', () => {
     ];
     const result = computeRowCounts(nodes);
     // Event collision zone overlaps span → spills to below.
-    expect(result.rowsAbove + result.rowsBelow).toBeGreaterThanOrEqual(2);
+    expect(result.rowsAbove).toBe(1);
+    expect(result.rowsBelow).toBe(1);
   });
 });

@@ -348,3 +348,73 @@ describe('GraphLayout with discrete events', () => {
     expect(edges).toHaveLength(2);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Edge cases
+// ---------------------------------------------------------------------------
+
+describe('GraphLayout edge cases', () => {
+  it('handles empty data array', () => {
+    const layout = makeLayout([], { scale: { type: 'linear' } });
+    const root = layout.computeLayout();
+    expect(root.id).toBe('root');
+    expect(root.band.nodes).toHaveLength(0);
+    expect(root.children).toHaveLength(0);
+  });
+
+  it('handles single node with no children', () => {
+    const data = [{ id: 'solo', label: 'Solo', start: 0, end: 100 }];
+    const layout = makeLayout(data, { scale: { type: 'linear' } });
+    const root = layout.computeLayout();
+    expect(root.band.nodes).toHaveLength(1);
+    expect(root.children).toHaveLength(0);
+  });
+
+  it('child band is horizontally centered under parent span', () => {
+    const data: TimelineNode[] = [
+      {
+        id: 'a',
+        label: 'A',
+        start: 0,
+        end: 100,
+        children: [
+          { id: 'a1', label: 'A1', start: 0, end: 50 },
+        ],
+      },
+    ];
+    const layout = makeLayout(data, {
+      scale: { type: 'linear' },
+      bandWidth: 800,
+      padding: { left: 20, right: 20 },
+    });
+    layout.expand('a');
+    const root = layout.computeLayout();
+    const child = root.children[0];
+
+    // The child band's center should be close to the parent span's center.
+    const childCenter = child.x + child.width / 2;
+    const rootCenter = root.x + root.width / 2;
+    // Span 'a' covers the full domain, so child should be roughly centered.
+    expect(Math.abs(childCenter - rootCenter)).toBeLessThan(50);
+  });
+
+  it('handles circular data references without infinite loop', () => {
+    const a: TimelineNode = {
+      id: 'a', label: 'A', start: 0, end: 50, children: [],
+    };
+    const b: TimelineNode = {
+      id: 'b', label: 'B', start: 50, end: 100, children: [a],
+    };
+    a.children = [b];
+
+    const layout = makeLayout([a, b], {
+      scale: { type: 'linear' },
+      exclusiveExpand: false,
+    });
+    layout.expand('a');
+    layout.expand('b');
+    // Should complete without hanging — visited set prevents infinite recursion.
+    const root = layout.computeLayout();
+    expect(root).toBeDefined();
+  });
+});

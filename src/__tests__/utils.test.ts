@@ -272,3 +272,88 @@ describe('spansOverlap with events', () => {
     expect(spansOverlap(node('a', 5, 10), eventNode('e', 3))).toBe(false);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Additional edge cases
+// ---------------------------------------------------------------------------
+
+describe('computeDomain edge cases', () => {
+  it('handles identical start and end (degenerate domain)', () => {
+    const nodes = [node('a', 5, 5)];
+    const [start, end] = computeDomain(nodes);
+    expect(start).toBe(5);
+    expect(end).toBe(5);
+  });
+
+  it('handles negative numeric values', () => {
+    const nodes = [node('a', -20, -5), node('b', -10, 10)];
+    expect(computeDomain(nodes)).toEqual([-20, 10]);
+  });
+});
+
+describe('spansOverlap edge cases', () => {
+  it('identical spans overlap', () => {
+    expect(spansOverlap(node('a', 0, 10), node('b', 0, 10))).toBe(true);
+  });
+
+  it('zero-width span at same point does not overlap', () => {
+    expect(spansOverlap(node('a', 5, 5), node('b', 5, 5))).toBe(false);
+  });
+});
+
+describe('findNode edge cases', () => {
+  it('returns first match when duplicate IDs exist', () => {
+    const tree = [
+      node('dup', 0, 10),
+      node('dup', 20, 30),
+    ];
+    const found = findNode(tree, 'dup');
+    expect(found).not.toBeNull();
+    // First occurrence: start === 0
+    expect(found!.start).toBe(0);
+  });
+
+  it('handles circular children without infinite loop', () => {
+    const a: TimelineNode = { id: 'a', label: 'A', start: 0, end: 10, children: [] };
+    const b: TimelineNode = { id: 'b', label: 'B', start: 0, end: 10, children: [a] };
+    a.children = [b];
+    // Should return null without hanging.
+    expect(findNode([a], 'nonexistent')).toBeNull();
+  });
+});
+
+describe('isEvent edge cases', () => {
+  it('treats span type with no end as event', () => {
+    const n: TimelineNode = { id: 'x', label: 'X', type: 'span', start: 5 };
+    // No end → isEvent returns true regardless of type field.
+    expect(isEvent(n)).toBe(true);
+  });
+});
+
+describe('resolveOptions', () => {
+  it('clamps negative bandWidth to 1', () => {
+    const opts = resolveOptions({ data: [], bandWidth: -100 });
+    expect(opts.bandWidth).toBe(1);
+  });
+
+  it('clamps negative animationDuration to 0', () => {
+    const opts = resolveOptions({ data: [], animationDuration: -50 });
+    expect(opts.animationDuration).toBe(0);
+  });
+
+  it('clamps padding to not exceed half bandWidth', () => {
+    const opts = resolveOptions({
+      data: [],
+      bandWidth: 100,
+      padding: { left: 200, right: 200 },
+    });
+    expect(opts.padding.left).toBeLessThan(50);
+    expect(opts.padding.right).toBeLessThan(50);
+  });
+
+  it('preserves callbacks', () => {
+    const onDrillDown = () => {};
+    const opts = resolveOptions({ data: [], onDrillDown });
+    expect(opts.onDrillDown).toBe(onDrillDown);
+  });
+});
