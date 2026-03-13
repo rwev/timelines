@@ -64,10 +64,14 @@ export class Viewport {
     const bw = bounds.width || 1;
     const bh = bounds.height || 1;
 
-    const scale = Math.min(
-      (svgW - pad * 2) / bw,
-      (svgH - pad * 2) / bh,
-      1.5, // don't zoom in too much
+    const maxFitScale = Math.min(this.opts.maxZoom, 1.5);
+    const scale = Math.max(
+      this.opts.minZoom,
+      Math.min(
+        (svgW - pad * 2) / bw,
+        (svgH - pad * 2) / bh,
+        maxFitScale,
+      ),
     );
 
     const cx = bounds.x + bw / 2;

@@ -117,8 +117,8 @@ describe('computeDomain', () => {
     expect(end).toEqual(new Date('2021-01-01'));
   });
 
-  it('throws on empty input', () => {
-    expect(() => computeDomain([])).toThrow('Cannot compute domain');
+  it('returns fallback domain for empty input', () => {
+    expect(computeDomain([])).toEqual([0, 1]);
   });
 
   it('handles a single node', () => {

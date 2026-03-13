@@ -3,7 +3,29 @@ import type { ScaleTime, ScaleLinear } from 'd3-scale';
 import { axisBottom } from 'd3-axis';
 import type { Axis } from 'd3-axis';
 import type { TimeScaleConfig, TimelineNode, TimelineScale } from './types';
-import { computeDomain, nodeEnd } from './utils';
+import { computeDomain, nodeEnd, toNumeric } from './utils';
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * If both ends of a domain are equal, widen by a small amount so D3
+ * scales produce finite values instead of NaN.
+ */
+function widenIfDegenerate(
+  domain: [Date | number, Date | number],
+): [Date | number, Date | number] {
+  const lo = toNumeric(domain[0]);
+  const hi = toNumeric(domain[1]);
+  if (lo !== hi) return domain;
+
+  // Dates: widen by 1 day; numbers: widen by 1.
+  if (domain[0] instanceof Date) {
+    return [new Date(lo - 86_400_000), new Date(hi + 86_400_000)];
+  }
+  return [lo - 1, hi + 1];
+}
 
 // ---------------------------------------------------------------------------
 // Scale creation
@@ -26,7 +48,10 @@ export function createScale(
   nodes: TimelineNode[],
   range: [number, number],
 ): ScaleResult {
-  const domain = config.domain ?? computeDomain(nodes);
+  const rawDomain = config.domain ?? computeDomain(nodes);
+
+  // Widen degenerate domains where min === max to avoid NaN from D3 scales.
+  const domain = widenIfDegenerate(rawDomain);
 
   if (config.type === 'time') {
     const d = domain as [Date, Date];

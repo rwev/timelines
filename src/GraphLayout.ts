@@ -95,12 +95,15 @@ export class GraphLayout {
     nodes: TimelineNode[],
     targetId: string,
     path: string[],
+    visited = new Set<string>(),
   ): boolean {
     for (const node of nodes) {
       if (node.id === targetId) return true;
+      if (visited.has(node.id)) continue;
+      visited.add(node.id);
       if (node.children) {
         path.push(node.id);
-        if (this.findPathRecursive(node.children, targetId, path)) return true;
+        if (this.findPathRecursive(node.children, targetId, path, visited)) return true;
         path.pop();
       }
     }
@@ -182,9 +185,13 @@ export class GraphLayout {
     return root;
   }
 
-  private buildChildrenRecursive(parent: GraphNode): void {
+  private buildChildrenRecursive(parent: GraphNode, visited = new Set<string>()): void {
     for (const node of parent.band.nodes) {
       if (this.expanded.has(node.id) && node.children && node.children.length > 0) {
+        // Guard against circular data references.
+        if (visited.has(node.id)) continue;
+        visited.add(node.id);
+
         const childBand = this.makeBand(node, node.children, parent.band.depth + 1);
 
         const childGraphNode: GraphNode = {
@@ -200,7 +207,7 @@ export class GraphLayout {
         };
 
         parent.children.push(childGraphNode);
-        this.buildChildrenRecursive(childGraphNode);
+        this.buildChildrenRecursive(childGraphNode, visited);
       }
     }
   }
@@ -428,11 +435,13 @@ export class GraphLayout {
     return scale;
   }
 
-  private collapseDescendants(nodes: TimelineNode[]): void {
+  private collapseDescendants(nodes: TimelineNode[], visited = new Set<string>()): void {
     for (const node of nodes) {
+      if (visited.has(node.id)) continue;
+      visited.add(node.id);
       this.expanded.delete(node.id);
       if (node.children) {
-        this.collapseDescendants(node.children);
+        this.collapseDescendants(node.children, visited);
       }
     }
   }
@@ -442,11 +451,17 @@ export class GraphLayout {
   }
 }
 
-function findNodeRecursive(nodes: TimelineNode[], id: string): TimelineNode | null {
+function findNodeRecursive(
+  nodes: TimelineNode[],
+  id: string,
+  visited = new Set<string>(),
+): TimelineNode | null {
   for (const node of nodes) {
     if (node.id === id) return node;
+    if (visited.has(node.id)) continue;
+    visited.add(node.id);
     if (node.children) {
-      const found = findNodeRecursive(node.children, id);
+      const found = findNodeRecursive(node.children, id, visited);
       if (found) return found;
     }
   }

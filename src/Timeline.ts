@@ -55,6 +55,13 @@ export class Timeline {
   private isFirstRender = true;
 
   constructor(container: HTMLElement, options: TimelineOptions) {
+    if (!container) {
+      throw new Error('Timeline: container element is required');
+    }
+    if (!Array.isArray(options?.data)) {
+      throw new Error('Timeline: options.data must be an array of TimelineNode');
+    }
+
     this.container = container;
     this.opts = resolveOptions(options);
 

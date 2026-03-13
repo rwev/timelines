@@ -163,7 +163,7 @@ export class BandRenderer {
     const width = graphNode.width;
     const padLeft = opts.padding.left;
     const padRight = opts.padding.right;
-    const innerWidth = width - padLeft - padRight;
+    const innerWidth = Math.max(1, width - padLeft - padRight);
 
     // --- Scale ---------------------------------------------------------------
     const scaleConfig: TimeScaleConfig = {

@@ -23,15 +23,25 @@ const DEFAULT_VIEWPORT: ViewportOptions = {
 };
 
 export function resolveOptions(opts: TimelineOptions): ResolvedOptions {
+  const bandWidth = Math.max(1, opts.bandWidth ?? 800);
+  const padding = opts.padding ?? { left: 20, right: 20 };
+
+  // Ensure padding doesn't exceed band width.
+  const maxPad = bandWidth / 2 - 1;
+  const clampedPadding = {
+    left: Math.max(0, Math.min(padding.left, maxPad)),
+    right: Math.max(0, Math.min(padding.right, maxPad)),
+  };
+
   return {
     data: opts.data,
     scale: { ...DEFAULT_SCALE, ...opts.scale } as TimeScaleConfig,
     bandHeight: opts.bandHeight ?? 40,
-    bandWidth: opts.bandWidth ?? 800,
+    bandWidth,
     bandGap: opts.bandGap ?? 24,
     verticalGap: opts.verticalGap ?? 60,
-    padding: opts.padding ?? { left: 20, right: 20 },
-    animationDuration: opts.animationDuration ?? 300,
+    padding: clampedPadding,
+    animationDuration: Math.max(0, opts.animationDuration ?? 300),
     swimLanes: opts.swimLanes ?? true,
     depthFade: opts.depthFade ?? 0.12,
     exclusiveExpand: opts.exclusiveExpand ?? true,
@@ -63,11 +73,17 @@ export function nodeEnd(node: TimelineNode): Date | number {
 }
 
 /** Find a node by id anywhere in the data tree. */
-export function findNode(roots: TimelineNode[], id: string): TimelineNode | null {
+export function findNode(
+  roots: TimelineNode[],
+  id: string,
+  visited = new Set<string>(),
+): TimelineNode | null {
   for (const root of roots) {
     if (root.id === id) return root;
+    if (visited.has(root.id)) continue;
+    visited.add(root.id);
     if (root.children) {
-      const found = findNode(root.children, id);
+      const found = findNode(root.children, id, visited);
       if (found) return found;
     }
   }
@@ -77,7 +93,7 @@ export function findNode(roots: TimelineNode[], id: string): TimelineNode | null
 /** Compute the minimum start and maximum end across a set of nodes. */
 export function computeDomain(nodes: TimelineNode[]): [Date | number, Date | number] {
   if (nodes.length === 0) {
-    throw new Error('Cannot compute domain of empty node list');
+    return [0, 1];
   }
 
   let minStart = toNumeric(nodes[0].start);
