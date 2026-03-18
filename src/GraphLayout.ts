@@ -69,6 +69,16 @@ export class GraphLayout {
     return true;
   }
 
+  /** Return the current expansion state (read-only view). */
+  getExpansionState(): ReadonlySet<string> {
+    return this.expanded;
+  }
+
+  /** Replace the entire expansion state. Used by `ZoomableTimeline`. */
+  setExpansionState(expanded: ReadonlySet<string>): void {
+    this.expanded = new Set(expanded);
+  }
+
   /**
    * Expand a node while collapsing all other expanded paths.
    * Preserves only the ancestors of `nodeId` (they must be expanded

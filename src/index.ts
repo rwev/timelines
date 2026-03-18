@@ -1,5 +1,6 @@
 // Public API
 export { Timeline } from './Timeline';
+export { ZoomableTimeline } from './ZoomableTimeline';
 
 // Types
 export type {
@@ -10,6 +11,7 @@ export type {
   ScaleFn,
   ThemeTokens,
   TimelineOptions,
+  ZoomableTimelineOptions,
   LaneAssignment,
   ViewportOptions,
   Bounds,

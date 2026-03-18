@@ -55,7 +55,8 @@ export function createScale(
 
   if (config.type === 'time') {
     const d = domain as [Date, Date];
-    const scale = scaleTime<number>().domain(d).range(range).nice();
+    const scale = scaleTime<number>().domain(d).range(range);
+    if (config.nice !== false) scale.nice();
 
     const ax = axisBottom(scale as ScaleTime<number, number, never>);
     if (config.tickCount) ax.ticks(config.tickCount);
@@ -66,7 +67,8 @@ export function createScale(
 
   // Linear
   const d = domain as [number, number];
-  const scale = scaleLinear<number>().domain(d).range(range).nice();
+  const scale = scaleLinear<number>().domain(d).range(range);
+  if (config.nice !== false) scale.nice();
 
   const ax = axisBottom(scale as ScaleLinear<number, number, never>);
   if (config.tickCount) ax.ticks(config.tickCount);

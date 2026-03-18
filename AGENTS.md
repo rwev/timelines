@@ -28,8 +28,8 @@ npx vitest run -t "finds root-level nodes"
 
 ### CI
 
-The deploy workflow (`.github/workflows/deploy.yml`) runs `npm test` then
-`npm run build:demo` on pushes to `main`. Node 20.
+`.github/workflows/deploy.yml` runs `npm test` then `npm run build:demo`
+on pushes to `main`. Node 20.
 
 ## Project Structure
 
@@ -38,145 +38,121 @@ src/
   index.ts              # Public barrel — curated re-exports only
   types.ts              # All interfaces and type aliases
   utils.ts              # Pure helper functions
-  Timeline.ts           # Main entry class (composes all others)
+  Timeline.ts           # Click-to-drill-down timeline (composes all others)
+  ZoomableTimeline.ts   # Semantic-zoom timeline variant (zoom-driven expansion)
+  VisibilityManager.ts  # Computes zoom-level-dependent expansion state
   BandRenderer.ts       # Renders bands (axes, spans, brackets, labels)
-  EdgeRenderer.ts       # Renders edges between bands
-  GraphLayout.ts        # Computes hierarchical node layout
+  EdgeRenderer.ts       # Renders Bezier edges between bands
+  GraphLayout.ts        # Computes hierarchical 2D node layout
   InteractionManager.ts # Click/hover/drill-down interaction handling
   LaneAssigner.ts       # Greedy lane-packing algorithm
   ScaleFactory.ts       # Creates D3 scales and axes
   Viewport.ts           # Zoom/pan via d3-zoom
   themes.ts             # CSS custom property theming system
   __tests__/            # Co-located test files (*.test.ts)
-demo/                   # Demo app (not part of library)
+demo/
+  index.html + main.ts        # Drill-down demo
+  zoomable.html + zoomable.ts # Semantic-zoom demo
 ```
 
 ## Code Style
 
 ### Formatting
 
-- **2-space indentation**, no tabs
-- **Single quotes** for all strings
-- **Semicolons** always
-- **Trailing commas** in multi-line constructs; omit in single-line
-- Lines generally under ~120 characters; no strict enforced limit
+- **2-space indentation**, no tabs.
+- **Single quotes**, **semicolons always**, **trailing commas** in multi-line.
+- Lines generally under ~120 characters; no strict enforced limit.
 
 ### Imports
 
 Separate `import type` from value imports — never mix in one statement.
-Order: (1) external value imports, (2) side-effect imports (`import 'd3-transition'`),
-(3) external type imports, (4) local value imports, (5) local type imports.
+Order: (1) external values, (2) side-effects (`import 'd3-transition'`),
+(3) external types, (4) local values, (5) local types.
 
 ```typescript
 import { select } from 'd3-selection';
 import 'd3-transition';
 import type { Selection, BaseType } from 'd3-selection';
-import type { EdgeDatum, ResolvedOptions } from './types';
 import { cssVar } from './themes';
+import type { EdgeDatum, ResolvedOptions } from './types';
 ```
 
 ### Exports
 
-**Named exports only** — no default exports anywhere. The barrel `index.ts`
-re-exports the public API; use `export type { ... }` for type-only re-exports.
-Internal modules (GraphLayout, BandRenderer, etc.) are not re-exported.
+**Named exports only** — no default exports. The barrel `index.ts` re-exports
+the public API; use `export type { ... }` for type-only re-exports. Internal
+modules (GraphLayout, BandRenderer, etc.) are not re-exported.
 
 ### Types
 
-- **Interfaces** for all object shapes (data models, configs, options).
-  No `I` prefix on interfaces.
-- **Type aliases** only for unions: `type TimelineScale = ScaleTime<...> | ScaleLinear<...>`
-- **Explicit return types** on all exported/public functions and methods.
-  Internal helpers may rely on inference.
-- Use `null` for "intentionally absent" (`parentNode: TimelineNode | null`),
-  `undefined` for optional properties (`end?: Date | number`).
-- Prefer optional chaining (`?.`) and nullish coalescing (`??`) over null checks.
+- **Interfaces** for object shapes; no `I` prefix. **Type aliases** only for unions.
+- **Explicit return types** on exported/public functions. Helpers may infer.
+- `null` = intentionally absent; `undefined` = optional property (`end?: Date`).
+- Prefer `?.` and `??` over null checks.
 - Utility types used: `Partial<>`, `Required<>`, `Omit<>`, `Record<string, unknown>`.
 
 ### Naming Conventions
 
-| Element               | Convention          | Examples                                  |
-|-----------------------|---------------------|-------------------------------------------|
-| Files (class)         | PascalCase          | `Timeline.ts`, `BandRenderer.ts`          |
-| Files (non-class)     | camelCase           | `types.ts`, `utils.ts`, `themes.ts`       |
-| Classes               | PascalCase          | `Timeline`, `GraphLayout`                 |
-| Interfaces / Types    | PascalCase          | `TimelineNode`, `ResolvedOptions`         |
-| Functions             | camelCase           | `computeDomain`, `assignLanes`            |
-| Variables / params    | camelCase           | `bandHeight`, `innerWidth`                |
-| Module-level consts   | UPPER_SNAKE_CASE    | `AXIS_AREA_HEIGHT`, `BRACKET_HEIGHT`      |
-| Booleans              | `is`/`was` prefix   | `isFirstRender`, `isExpanded`             |
-| Private class members | `private` keyword   | No `_` or `#` prefix                     |
-| Unused params         | `_` prefix          | `_event`, `_d`                            |
-| CSS classes           | `tl-` prefix        | `tl-band`, `tl-span`, `tl-edge`          |
+| Element               | Convention        | Examples                              |
+|-----------------------|-------------------|---------------------------------------|
+| Files (class)         | PascalCase        | `Timeline.ts`, `BandRenderer.ts`      |
+| Files (non-class)     | camelCase         | `types.ts`, `utils.ts`, `themes.ts`   |
+| Classes               | PascalCase        | `Timeline`, `GraphLayout`             |
+| Interfaces / Types    | PascalCase        | `TimelineNode`, `ResolvedOptions`     |
+| Functions / variables | camelCase         | `computeDomain`, `bandHeight`         |
+| Module-level consts   | UPPER_SNAKE_CASE  | `AXIS_AREA_HEIGHT`, `BRACKET_HEIGHT`  |
+| Booleans              | `is`/`was` prefix | `isFirstRender`, `wasExpanded`        |
+| Private members       | `private` keyword | No `_` or `#` prefix                 |
+| Unused params         | `_` prefix        | `_event`, `_d`                        |
+| CSS classes           | `tl-` prefix      | `tl-band`, `tl-span`, `tl-edge`      |
 
-Short local abbreviations are acceptable: `opts`, `d` (datum), `g` (group),
-`s` (scale), `ax` (axis), `bw`/`bh` (bounds width/height).
+Short abbreviations OK: `opts`, `d` (datum), `g` (group), `s` (scale).
 
-### Functions
+### Functions & Classes
 
-- **Module-level functions**: use `function` declarations (not arrow functions).
-- **Class methods**: standard method syntax.
-- **Arrow function class properties**: only for methods passed as callbacks
-  (to preserve `this` binding), e.g. `handleClick = (node: TimelineNode): void => { ... }`.
-- **Inline arrow functions**: for D3 chain callbacks and functional operations.
-- Use traditional `function` keyword (not arrow) when D3's `this` binding to
-  the DOM element is needed.
-- Use default parameter values for boolean flags: `fitToContent(animate = true)`.
-
-### Classes
-
+- **Module-level functions**: `function` declarations (not arrows).
+- **Arrow class properties**: only for callbacks needing `this` binding.
+- Use `function` keyword when D3's `this` binding to DOM element is needed.
+- Default params for boolean flags: `fitToContent(animate = true)`.
 - Classes for stateful components; free functions for stateless logic.
-- No inheritance — composition only. `Timeline` composes renderer/manager classes.
-- Field ordering: private fields, constructor, public API, internal methods, helpers.
+- No inheritance — composition only.
+- Field ordering: private fields, constructor, public API, internals, helpers.
   Sections separated by `// ---...---` comment dividers.
-- Use definite assignment assertion (`!`) for fields initialized in called methods
-  rather than the constructor: `private svg!: Selection<...>`.
+- Definite assignment (`!`) for fields initialized in called methods.
 
 ### Error Handling
 
-- **No try/catch** — prevent invalid states structurally via types and early returns.
-- **Throw** only for programmer errors (e.g., null container in `Timeline` constructor).
-- **Return `null`** from search functions when no match is found.
-- **Return fallback values** for empty inputs (e.g., `computeDomain([])` returns `[0, 1]`).
-- **Early return** for edge cases (empty input, missing DOM elements, zero dimensions).
-- **Guard async callbacks** with `isDestroyed` flag after `destroy()`.
-- Use optional chaining for cleanup: `this.resizeObserver?.disconnect()`.
-- Non-null assertion (`!`) only when context guarantees non-null (e.g., after
-  a while-loop guard).
-- **Visited-set protection** on all recursive tree walks to prevent infinite
-  loops on circular user data.
+- **No try/catch** — prevent invalid states via types and early returns.
+- **Throw** only for programmer errors (null container, invalid data).
+- Return `null` from search functions; return fallback values for empty inputs.
+- Guard async callbacks with `isDestroyed` flag after `destroy()`.
+- Optional chaining for cleanup: `this.resizeObserver?.disconnect()`.
+- Non-null assertion (`!`) only when context guarantees non-null.
+- **Visited-set protection** on all recursive tree walks (circular data guard).
 
 ### Comments
 
-- **Section separators**: `// ---...---` horizontal rules to divide files/classes
-  into logical sections.
-- **JSDoc** (`/** ... */`) on all exported interfaces, functions, and public methods.
-- **Inline comments**: short, purpose-driven `//` comments. Explain *why*, not *what*.
-- Interface properties have inline `/** ... */` doc comments.
+- `// ---...---` horizontal rules to divide files into logical sections.
+- **JSDoc** (`/** ... */`) on all exported interfaces, functions, public methods.
+- Inline `//` comments: explain *why*, not *what*.
 
 ### D3 Patterns
 
-- Import individual D3 packages (`d3-selection`, `d3-scale`, etc.), not monolithic `d3`.
-- Always include `import 'd3-transition'` as a side-effect import in files using `.transition()`.
+- Import individual packages (`d3-selection`, `d3-scale`), not monolithic `d3`.
+- Always `import 'd3-transition'` as side-effect in files using `.transition()`.
 - Fully parameterize Selection types: `Selection<SVGGElement, GraphNode, BaseType, unknown>`.
-- Use the enter-update-exit pattern for data joins consistently.
-- Cast scales to `ScaleFn` (or `(v: Date | number) => number`) when used
-  outside D3 APIs.
-- Use `as any` at D3 API boundaries where TS type definitions are overly strict
-  (e.g., `axisG.call(axis as any)`).
-- **Name all transitions** to prevent cross-cancellation on rapid re-renders
-  (e.g., `.transition('band-layout')`, `.transition('edge-enter')`).
-- Theme values via CSS custom properties: use `cssVar('tokenName')` helper,
-  applied with `.style()` not `.attr()`.
-- All transitions use `opts.animationDuration` for consistent animation timing.
-- Band scales are cached per GraphNode per layout pass to avoid redundant creation.
+- Enter-update-exit pattern for all data joins.
+- Cast scales to `ScaleFn` when used outside D3 APIs; `as any` at strict API boundaries.
+- **Name all transitions** to prevent cross-cancellation (e.g., `.transition('band-layout')`).
+- Theme via CSS custom properties: `cssVar('tokenName')` with `.style()` not `.attr()`.
+- All transitions use `opts.animationDuration` for consistent timing.
 
 ### Testing
 
-- Test framework: Vitest. Import `describe`, `it`, `expect` from `'vitest'`.
-- Test files live in `src/__tests__/` and are named `<Module>.test.ts`.
-- Tests use local helper factory functions (e.g., `node()`, `graphNode()`) at
-  the top of the file to construct test data.
-- Section separators (`// ---...---`) divide test groups within a file.
-- Prefer `toEqual` for deep equality, `toBe` for primitives/identity,
-  `toThrow` for error assertions.
+- Framework: Vitest. Import `describe`, `it`, `expect` from `'vitest'`.
+- Files: `src/__tests__/<Module>.test.ts`.
+- Local factory helpers (`node()`, `graphNode()`) at top of each test file.
+- Section separators (`// ---...---`) divide test groups.
+- `toEqual` for deep equality, `toBe` for primitives, `toThrow` for errors.
+- DOM tests use `// @vitest-environment jsdom` directive and stub
+  `ResizeObserver`, `SVGElement.getComputedTextLength`, `svg.width.baseVal`.

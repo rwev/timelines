@@ -61,6 +61,12 @@ export interface TimeScaleConfig {
   tickCount?: number;
   /** Custom tick format function. */
   tickFormat?: (domainValue: Date | number, index: number) => string;
+  /**
+   * Whether to round the domain to "nice" boundaries via `scale.nice()`.
+   * Default `true`. Set to `false` for semantic-zoom scales where the
+   * domain must remain exact to prevent center-point drift.
+   */
+  nice?: boolean;
 }
 
 /** Union of D3 scale types the library works with. */
@@ -235,4 +241,58 @@ export interface TimelineEventMap {
   'timeline:drill-down': CustomEvent<{ node: TimelineNode }>;
   'timeline:collapse': CustomEvent<{ node: TimelineNode }>;
   'timeline:hover': CustomEvent<{ node: TimelineNode | null }>;
+}
+
+// ---------------------------------------------------------------------------
+// Zoomable timeline
+// ---------------------------------------------------------------------------
+
+/** Configuration passed to the `ZoomableTimeline` constructor. */
+export interface ZoomableTimelineOptions {
+  /** Root data nodes. */
+  data: TimelineNode[];
+  /** Scale configuration. */
+  scale?: Partial<TimeScaleConfig>;
+  /** Left/right padding inside the timeline for axis labels. */
+  padding?: { left: number; right: number };
+  /** Transition duration in milliseconds for items appearing/disappearing. */
+  animationDuration?: number;
+  /** Minimum zoom scale. Default `0.5`. */
+  minZoom?: number;
+  /** Maximum zoom scale. Default `80`. */
+  maxZoom?: number;
+
+  /**
+   * Minimum pixel width of a span (at current zoom) to make it visible.
+   * When a span's pixel width on the zoomed scale crosses this threshold,
+   * its children become candidates for rendering. Default `60`.
+   */
+  expandThreshold?: number;
+  /**
+   * Pixel width below which a previously-visible span's children are hidden.
+   * Must be less than `expandThreshold` to provide hysteresis and prevent
+   * flickering at threshold boundaries. Default `40`.
+   */
+  collapseThreshold?: number;
+  /**
+   * Maximum hierarchy depth that can be revealed via zoom.
+   * Default `Infinity` (no limit).
+   */
+  maxDepth?: number;
+
+  // Callbacks
+  /** Fired on span hover. */
+  onHover?: (node: TimelineNode | null) => void;
+}
+
+/**
+ * Resolved zoomable options with all defaults applied.
+ * Extends `ResolvedOptions` so that `BandRenderer` works without modification.
+ */
+export interface ResolvedZoomableOptions extends ResolvedOptions {
+  expandThreshold: number;
+  collapseThreshold: number;
+  maxDepth: number;
+  minZoom: number;
+  maxZoom: number;
 }

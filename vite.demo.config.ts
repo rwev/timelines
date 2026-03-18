@@ -11,5 +11,11 @@ export default defineConfig({
   build: {
     outDir: resolve(__dirname, 'demo-dist'),
     emptyOutDir: true,
+    rollupOptions: {
+      input: {
+        main: resolve(__dirname, 'demo/index.html'),
+        zoomable: resolve(__dirname, 'demo/zoomable.html'),
+      },
+    },
   },
 });

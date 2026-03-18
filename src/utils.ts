@@ -3,6 +3,8 @@ import type {
   TimelineNode,
   TimelineOptions,
   ResolvedOptions,
+  ResolvedZoomableOptions,
+  ZoomableTimelineOptions,
   TimeScaleConfig,
   ViewportOptions,
 } from './types';
@@ -50,6 +52,34 @@ export function resolveOptions(opts: TimelineOptions): ResolvedOptions {
     onDrillDown: opts.onDrillDown,
     onCollapse: opts.onCollapse,
     onHover: opts.onHover,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Zoomable option resolution
+// ---------------------------------------------------------------------------
+
+/**
+ * Resolve `ZoomableTimelineOptions` into a fully-defaulted object.
+ * Delegates shared layout/scale fields to `resolveOptions`,
+ * then layers on the semantic-zoom-specific defaults.
+ */
+export function resolveZoomableOptions(opts: ZoomableTimelineOptions): ResolvedZoomableOptions {
+  const base = resolveOptions({
+    data: opts.data,
+    scale: opts.scale,
+    padding: opts.padding,
+    animationDuration: opts.animationDuration,
+    onHover: opts.onHover,
+  });
+
+  return {
+    ...base,
+    expandThreshold: opts.expandThreshold ?? 60,
+    collapseThreshold: opts.collapseThreshold ?? 40,
+    maxDepth: opts.maxDepth ?? Infinity,
+    minZoom: opts.minZoom ?? 0.5,
+    maxZoom: opts.maxZoom ?? 80,
   };
 }
 

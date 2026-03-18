@@ -41,6 +41,15 @@ const BRACKET_SEPARATION = 12;
  *  Events have zero duration, so they need a synthetic width for overlap detection. */
 const EVENT_HALF_WIDTH = 25;
 
+/** Radius of each detail-indicator dot (signals hidden children). */
+const DETAIL_DOT_RADIUS = 1.5;
+
+/** Horizontal spacing between detail-indicator dots. */
+const DETAIL_DOT_SPACING = 4;
+
+/** Vertical offset of detail dots below the bracket bar. */
+const DETAIL_DOT_OFFSET = 6;
+
 // ---------------------------------------------------------------------------
 // Depth-scaled visual style
 // ---------------------------------------------------------------------------
@@ -151,11 +160,19 @@ export class BandRenderer {
     this.opts = opts;
   }
 
+  /**
+   * Render a single band's content: axis, brackets, markers, labels.
+   *
+   * @param expandedNodeIds  When provided, spans with hidden children
+   *   (have children but are not in this set) render a detail indicator
+   *   and click-to-drill-down is disabled. Used by `ZoomableTimeline`.
+   */
   render(
     parentG: Selection<SVGGElement, GraphNode, BaseType, unknown>,
     graphNode: GraphNode,
     onClick: (node: TimelineNode) => void,
     onHover: (node: TimelineNode | null) => void,
+    expandedNodeIds?: ReadonlySet<string>,
   ): void {
     const { opts } = this;
     const band = graphNode.band;
@@ -239,6 +256,15 @@ export class BandRenderer {
     spanEnter.append('circle').attr('class', 'tl-marker-end');
     spanEnter.append('text').attr('class', 'tl-span-label');
     spanEnter.append('title');
+
+    // Detail indicator: three small dots signalling hidden children.
+    const indicatorEnter = spanEnter.append('g').attr('class', 'tl-detail-indicator');
+    for (let di = -1; di <= 1; di++) {
+      indicatorEnter.append('circle')
+        .attr('cx', di * DETAIL_DOT_SPACING)
+        .attr('cy', 0)
+        .attr('r', DETAIL_DOT_RADIUS);
+    }
 
     // Merge
     const spanMerge = spanEnter.merge(spanSel);
@@ -352,12 +378,35 @@ export class BandRenderer {
     // Tooltip — always shows full (untruncated) label text.
     spanMerge.select('title').text((d) => d.node.label);
 
+    // --- Detail indicator (zoom-mode only) -----------------------------------
+    // Three small dots below the bracket bar on spans whose children are
+    // hidden (not yet expanded via zoom). Provides a visual cue that the
+    // user can zoom in to reveal more detail.
+    const isZoomMode = expandedNodeIds !== undefined;
+    spanMerge.select<SVGGElement>('g.tl-detail-indicator')
+      .attr('transform', (d) => {
+        const cx = d.isEvent ? d.x0 : (d.x0 + d.x1) / 2;
+        const by = barY(d, axisLineY);
+        const offsetDir = d.direction === 1 ? -1 : 1;
+        return `translate(${cx}, ${by + offsetDir * DETAIL_DOT_OFFSET})`;
+      })
+      .style('display', (d) => {
+        if (!isZoomMode) return 'none';
+        const hasChildren = !d.isEvent && d.node.children && d.node.children.length > 0;
+        const isExpanded = hasChildren && expandedNodeIds.has(d.node.id);
+        return hasChildren && !isExpanded ? null : 'none';
+      })
+      .selectAll('circle')
+      .style('fill', cssVar('bracketLeafColor'));
+
     // --- Interaction ---------------------------------------------------------
-    // Events are not interactive (no drill-down). Spans get click/hover.
+    // In zoom mode, click-to-drill-down is disabled — zoom drives expansion.
+    // Events are never interactive. Spans get click/hover.
+    const isClickable = !isZoomMode;
     spanMerge
-      .style('cursor', (d) => (d.interactive ? 'pointer' : 'default'))
+      .style('cursor', (d) => (isClickable && d.interactive ? 'pointer' : 'default'))
       .on('click', (_event, d) => {
-        if (d.interactive) onClick(d.node);
+        if (isClickable && d.interactive) onClick(d.node);
       })
       .on('mouseenter', function (_event, d) {
         if (d.isEvent) { onHover(d.node); return; }
@@ -382,6 +431,119 @@ export class BandRenderer {
         g.selectAll<SVGCircleElement, unknown>('circle')
           .attr('r', d.interactive ? ds.markerInteractiveR : ds.markerLeafR);
         onHover(null);
+      });
+  }
+
+  // -----------------------------------------------------------------------
+  // Lightweight position update (semantic zoom)
+  // -----------------------------------------------------------------------
+
+  /**
+   * Reposition all existing span elements using a new scale **without**
+   * running the D3 data join (no enter/exit). This is called on every
+   * zoom frame by `ZoomableTimeline` so that brackets, markers, labels,
+   * and the axis track the zoomed scale in real time.
+   *
+   * A full `render()` is only needed when the *set* of visible nodes
+   * changes (items appearing/disappearing). Between those events, only
+   * positions change — this method handles that cheaply.
+   */
+  updatePositions(
+    parentG: Selection<SVGGElement, GraphNode, BaseType, unknown>,
+    graphNode: GraphNode,
+  ): void {
+    const { opts } = this;
+    const band = graphNode.band;
+    const width = graphNode.width;
+    const padLeft = opts.padding.left;
+    const padRight = opts.padding.right;
+    const innerWidth = Math.max(1, width - padLeft - padRight);
+
+    // Rebuild scale from the (zoomed) domain — must use nice:false
+    // to avoid center-point drift.
+    const parentDomain = band.parentNode
+      ? [band.parentNode.start, nodeEnd(band.parentNode)] as [Date, Date] | [number, number]
+      : undefined;
+    const scaleConfig: TimeScaleConfig = {
+      ...opts.scale,
+      domain: parentDomain ?? opts.scale.domain,
+      nice: false,
+    };
+    const { scale, axis } = createScale(scaleConfig, band.nodes, [0, innerWidth]);
+
+    // Recompute axis Y (may change if row layout changed in a prior render).
+    const { rowsAbove } = computeRowCounts(band.nodes);
+    const aboveSpace = rowsAbove > 0 ? rowsAbove * BRACKET_HEIGHT + LABEL_OVERFLOW : 0;
+    const axisLineY = aboveSpace;
+
+    // Update axis.
+    const axisG = parentG.select<SVGGElement>('g.tl-axis');
+    if (!axisG.empty()) {
+      axisG.attr('transform', `translate(${padLeft}, ${axisLineY})`);
+      axisG.call(axis as any);
+      axisG.select('.domain').style('stroke', cssVar('axisColor'));
+      axisG.selectAll('.tick line').style('stroke', cssVar('axisColor'));
+      axisG.selectAll('.tick text').style('fill', cssVar('axisText'));
+    }
+
+    // Rebuild span datums for new positions.
+    const datums = buildSpanDatums(band.nodes, scale);
+    const datumMap = new Map(datums.map((d) => [d.node.id, d]));
+
+    // Reposition each existing span group.
+    parentG
+      .select<SVGGElement>('g.tl-spans')
+      .selectAll<SVGGElement, SpanDatum>('g.tl-span')
+      .each(function (oldD) {
+        const d = datumMap.get(oldD.node.id);
+        if (!d) return;
+
+        const g = select(this);
+
+        // Update the bound datum so subsequent calls see fresh positions.
+        g.datum(d);
+
+        // Markers.
+        g.select('circle.tl-marker-start').attr('cx', d.x0).attr('cy', axisLineY);
+        g.select('circle.tl-marker-end').attr('cx', d.x1).attr('cy', axisLineY);
+
+        // Label.
+        const textEl = g.select<SVGTextElement>('text.tl-span-label');
+        textEl.attr('x', d.isEvent ? d.x0 : (d.x0 + d.x1) / 2);
+        textEl.attr('y', barY(d, axisLineY));
+
+        // Truncate label if needed.
+        const textNode = textEl.node();
+        let labelWidth = 0;
+        if (textNode) {
+          textEl.text(d.node.label);
+          if (d.isEvent) {
+            labelWidth = textNode.getComputedTextLength();
+          } else {
+            const spanWidth = d.x1 - d.x0;
+            if (spanWidth < MIN_LABEL_WIDTH) {
+              textEl.text('');
+            } else {
+              clipText(textEl, spanWidth - 2 * LABEL_GAP_PAD);
+              labelWidth = textNode.getComputedTextLength();
+            }
+          }
+        }
+
+        // Bracket path.
+        const pathD = d.isEvent
+          ? eventTickPath(d, axisLineY)
+          : bracketPath(d, axisLineY, labelWidth);
+        g.select('path.tl-bracket').attr('d', pathD);
+
+        // Detail indicator.
+        g.select('g.tl-detail-indicator')
+          .attr('transform', () => {
+            const cx = d.isEvent ? d.x0 : (d.x0 + d.x1) / 2;
+            const by = barY(d, axisLineY);
+            const offsetDir = d.direction === 1 ? -1 : 1;
+            return `translate(${cx}, ${by + offsetDir * DETAIL_DOT_OFFSET})`;
+          });
       });
   }
 }

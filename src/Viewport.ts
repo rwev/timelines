@@ -16,6 +16,7 @@ export class Viewport {
   private svg: Selection<SVGSVGElement, unknown, BaseType, unknown> | null = null;
   private rootG: Selection<SVGGElement, unknown, BaseType, unknown> | null = null;
   private currentTransform: ZoomTransform = zoomIdentity;
+  private zoomCallback: ((transform: ZoomTransform) => void) | null = null;
 
   constructor(opts: ViewportOptions) {
     this.opts = opts;
@@ -25,7 +26,16 @@ export class Viewport {
       .on('zoom', (event) => {
         this.currentTransform = event.transform;
         this.rootG?.attr('transform', event.transform.toString());
+        this.zoomCallback?.(event.transform);
       });
+  }
+
+  /**
+   * Register a callback invoked on every zoom/pan event.
+   * Used by `ZoomableTimeline` to drive semantic zoom behaviour.
+   */
+  setZoomCallback(cb: ((transform: ZoomTransform) => void) | null): void {
+    this.zoomCallback = cb;
   }
 
   /**
